@@ -26,3 +26,25 @@ for i in range(engine.num_io_tensors):
     mode = engine.get_tensor_mode(name)
     print(f"Tensor {i}: name='{name}', shape={shape}, dtype={dtype}, mode={mode}")
 
+
+
+#preprocessing
+import cv2
+import numpy as np
+
+img = cv2.imread('test.jpg')
+print("Original shape:", img.shape)
+
+img_resized = cv2.resize(img, (640, 640))
+
+img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+
+img_normalized = img_rgb.astype(np.float32) / 255.0
+
+img_chw = np.transpose(img_normalized, (2, 0, 1))
+
+input_data = np.expand_dims(img_chw, axis=0)
+
+print("Final input shape:", input_data.shape)
+print("Data type:", input_data.dtype)
+
