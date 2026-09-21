@@ -45,6 +45,45 @@ img_chw = np.transpose(img_normalized, (2, 0, 1))
 
 input_data = np.expand_dims(img_chw, axis=0)
 
+input_data = np.ascontiguousarray(input_data)
+
 print("Final input shape:", input_data.shape)
 print("Data type:", input_data.dtype)
 
+
+
+#allocating GPU memory
+output_shape = (1, 84, 8400)
+output_data = np.empty(output_shape, dtype=np.float32)
+
+d_input = cuda.mem_alloc(input_data.nbytes)
+d_output = cuda.mem_alloc(output_data.nbytes)
+
+cuda.memcpy_htod(d_input, input_data)
+
+print("Input allocated:", d_input)
+print("Output allocated:", d_output)
+print("Input copied to GPU")
+
+
+#bind memory addresses and run the engine
+context.set_tensor_address("images", int(d_input))
+context.set_tensor_address("output0", int(d_output))
+
+stream = cuda.Stream()
+
+context.execute_async_v3(stream_handle=stream.handle)
+
+stream.synchronize()
+
+print("Inference executed")
+
+
+
+#copy results back to cpu
+cuda.memcpy_dtoh(output_data, d_output)
+
+print("Output copied back to CPU")
+print("Output shape:", output_data.shape)
+print("Sample values (first detection candidate):")
+print(output_data[0, :, 0])
