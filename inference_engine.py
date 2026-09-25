@@ -87,3 +87,47 @@ print("Output copied back to CPU")
 print("Output shape:", output_data.shape)
 print("Sample values (first detection candidate):")
 print(output_data[0, :, 0])
+
+
+
+#Benchmark plain PyTorch inference
+from ultralytics import YOLO
+import time
+
+pytorch_model = YOLO('yolov8n.pt')
+
+# Warm-up run (not timed)
+_ = pytorch_model('test.jpg', verbose=False)
+
+# Timed runs
+num_runs = 20
+start = time.time()
+for _ in range(num_runs):
+    _ = pytorch_model('test.jpg', verbose=False)
+pytorch_time = (time.time() - start) / num_runs
+
+print(f"PyTorch avg inference time: {pytorch_time*1000:.2f} ms")
+
+
+
+
+#TensorRT pipeline
+num_runs = 20
+
+# Warm-up
+context.set_tensor_address("images", int(d_input))
+context.set_tensor_address("output0", int(d_output))
+context.execute_async_v3(stream_handle=stream.handle)
+stream.synchronize()
+
+# Timed runs
+start = time.time()
+for _ in range(num_runs):
+    cuda.memcpy_htod(d_input, input_data)
+    context.execute_async_v3(stream_handle=stream.handle)
+    stream.synchronize()
+    cuda.memcpy_dtoh(output_data, d_output)
+trt_time = (time.time() - start) / num_runs
+
+print(f"TensorRT avg inference time: {trt_time*1000:.2f} ms")
+print(f"Speedup: {pytorch_time / trt_time:.2f}x")
